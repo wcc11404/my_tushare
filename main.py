@@ -1,68 +1,20 @@
 import tushare as ts
-import time
 import pandas as pd
 import time
-import datetime
-import pickle
-import os
 import tqdm
+
+from Share import Share
 
 my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
 ts.set_token(my_token)
 pro = ts.pro_api(my_token)
 
-def generate_date_list(start_date, end_date, wo_weekend=True):
-    date_list = []
-    start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-    end_date = datetime.datetime.strptime(end_date, "%Y%m%d")
-    while start_date <= end_date:
-        if wo_weekend == False or start_date.weekday() < 5:
-            date_list.append(start_date.strftime("%Y%m%d"))
-        start_date += datetime.timedelta(days=1)
-    return date_list
+gongHang = Share()
+# gongHang.show_market_condition()
 
-def download_and_update_code_data(code="601398.SH"):
-    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-    yesterday_date = yesterday.strftime("%Y%m%d")
+# download_and_update_code_data(code="601398.SH")
 
-    # 加载之前下载过的数据
-    code_data = {
-        "行情": {},
-    }
-    save_file_name = "code_data/{}.pkl".format(code.replace(".", "_"))
-    if not os.path.exists(save_file_name):
-        pass
-    else:
-        with open(save_file_name, 'rb') as file:
-            code_data = pickle.load(file)
-
-    for date in tqdm.tqdm(generate_date_list("20230101", yesterday_date, wo_weekend=True)):
-        if date in code_data["行情"]:
-            continue
-        df = pro.daily(ts_code=code, start_date=date, end_date=date)
-        if df.empty == True:
-            continue
-        temp_dict = df.loc[0].to_dict()
-        # https://tushare.pro/document/2?doc_id=27
-        code_data["行情"][date] = {
-            "开盘价": temp_dict["open"],
-            "最高价": temp_dict["high"],
-            "最低价": temp_dict["low"],
-            "收盘价": temp_dict["close"],
-            "昨收价": temp_dict["pre_close"],
-            "涨跌额": temp_dict["change"],
-            "涨跌幅": temp_dict["pct_chg"],
-            "成交量": temp_dict["vol"],
-            "成交额": temp_dict["amount"],
-        }
-
-    # 写入文件
-    with open(save_file_name, 'wb') as file:
-        pickle.dump(code_data, file)
-
-download_and_update_code_data(code="601398.SH")
-
-def main(code="601398.SH"):
+def test(code="601398.SH"):
     """
     前复权 	当日收盘价 × 当日复权因子 / 最新复权因子
     后复权 	当日收盘价 × 当日复权因子
@@ -71,7 +23,6 @@ def main(code="601398.SH"):
     """
 
     # df = pro.daily(ts_code=code, start_date='20240524', end_date='20240524')
-
 
     dt = "20240523"
     # dt = "20241103"
@@ -96,4 +47,4 @@ def main(code="601398.SH"):
 
     #0.3035
 
-# main()
+# test()
