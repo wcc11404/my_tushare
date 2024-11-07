@@ -1,18 +1,19 @@
 import tushare as ts
-import pandas as pd
-import time
-import tqdm
-
 from Share import Share
 
 my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
 ts.set_token(my_token)
 pro = ts.pro_api(my_token)
 
-gongHang = Share()
-# gongHang.show_market_condition()
+gongHang = Share("601398.SH")
+# avg_ratio, cnt = gongHang.get_average_dividend_ratio()
+# print(round(avg_ratio, 3))
 
-# download_and_update_code_data(code="601398.SH")
+ratio_dict = gongHang.get_dividend_ratio()
+for k,v in ratio_dict.items():
+    print(k,v)
+
+# gongHang.show_market_condition()
 
 def test(code="601398.SH"):
     """
@@ -46,5 +47,4 @@ def test(code="601398.SH"):
     print(df.loc[0].to_dict())
 
     #0.3035
-
 # test()
