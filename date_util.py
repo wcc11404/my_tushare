@@ -1,5 +1,8 @@
 import datetime
 
+yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+yesterday_date = yesterday.strftime("%Y%m%d")
+
 def generate_date_list(start_date, end_date, wo_weekend=True, illegal_date_list=[]):
     """
     生成start 到 end 的时间序列列表

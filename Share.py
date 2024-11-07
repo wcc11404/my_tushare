@@ -25,14 +25,12 @@ class Share:
     def init_information(self):
         self.market_condition = {}
         self.dividend = {}
-        self.qfq_market_condition = {}
+        # self.qfq_market_condition = {}
 
         self.load()
         self.download_and_update_dividend()
         self.download_and_update_market_condition()
         self.save()
-
-        self.show_dividend_ratio()
 
     def load(self):
         # 加载之前下载过的数据
@@ -57,7 +55,7 @@ class Share:
         data = json.loads(response.text)
         print(data)
 
-    def count_qfq_market_condition(self, start_date="20200101", end_date=None):
+    def count_qfq_market_condition(self, start_date="20100101", end_date=None):
         if end_date is None:
             yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
             end_date = yesterday.strftime("%Y%m%d")
@@ -68,7 +66,7 @@ class Share:
                 continue
             qfq_market_condition[date]
 
-    def download_and_update_dividend(self, start_date="20200101"):
+    def download_and_update_dividend(self, start_date="20100101"):
         if self.code == "601398.SH":
             temp = [
                 [20070620, 20070628, 0.165, 0],
@@ -105,15 +103,12 @@ class Share:
         for item in arr:
             self.dividend[item[0]] = item[1]
 
-    def download_and_update_market_condition(self, start_date="20200101"):
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-        yesterday_date = yesterday.strftime("%Y%m%d")
-
+    def download_and_update_market_condition(self, start_date="20100101"):
         # 按时间获取数据
         for date in tqdm.tqdm(
                 date_util.generate_date_list(
                     start_date,
-                    yesterday_date,
+                    date_util.yesterday_date,
                     wo_weekend=True,
                     illegal_date_list=self.market_condition.keys()
                 )
@@ -165,9 +160,11 @@ class Share:
             print(date)
             print(value)
 
-    def show_market_condition(self):
+    def show_market_condition(self, start_date="20200101", end_date=date_util.yesterday_date):
         x, y = [], []
         for date, value in self.market_condition.items():
+            if date < start_date or date > end_date:
+                continue
             if len(value) == 0:
                 continue
             x.append(date)
@@ -175,7 +172,35 @@ class Share:
         plt.plot(x, y)
         plt.show()
 
-    def show_dividend_ratio(self):
+    def get_dividend_ratio(self):
+        """
+        计算历年平均分红率
+        :return:
+        """
+        dividend_ratio_dict = {}
         for date, value in self.dividend.items():
             if date in self.market_condition:
-                print("{} {}".format(date, value["分红"] / self.market_condition[date]["收盘价"]))
+                dividend_ratio_dict[date] = value["分红"] / self.market_condition[date]["收盘价"]
+        return dividend_ratio_dict
+
+    def get_average_dividend_ratio(self, count_year=-1):
+        """
+        计算指定年份的平均分红率
+        :param count_year: -1代表全部年份， 5代表只计算最近5年的平均分红率
+        :return:
+        """
+        dividend_ratio_dict = self.get_dividend_ratio()
+
+        year = int(datetime.datetime.now().strftime("%Y"))
+        if count_year == -1:
+            count_year = year - 1980
+        count_num, sum_ratio = 0, 0
+        for y in range(year-count_year, year+1):
+            flag = False
+            for date, value in dividend_ratio_dict.items():
+                if date.startswith(str(y)):
+                    sum_ratio += dividend_ratio_dict[date]
+                    flag = True
+            if flag == True:
+                count_num += 1
+        return sum_ratio / count_num if count_num > 0 else 0, count_num
