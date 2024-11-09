@@ -5,6 +5,7 @@ import requests
 import pickle
 import datetime
 import json
+import pandas as pd
 import matplotlib.pyplot as plt
 import tushare as ts
 
@@ -155,12 +156,6 @@ class ShareUnit:
         with open(self.save_file_name, 'wb') as file:
             pickle.dump(code_data, file)
 
-    def show(self):
-        print(len(self.market_condition))
-        for date, value in self.market_condition.items():
-            print(date)
-            print(value)
-
     def show_market_condition(self, start_date="20200101", end_date=date_util.yesterday_date):
         x, y = [], []
         for date, value in self.market_condition.items():
@@ -172,6 +167,18 @@ class ShareUnit:
             y.append(value["开盘价"])
         plt.plot(x, y)
         plt.show()
+
+    def show_mean(self, start_date="20200101", end_date=date_util.yesterday_date):
+        dataframe = []
+        for date, value in self.market_condition.items():
+            if date < start_date or date > end_date:
+                continue
+            if len(value) == 0:
+                continue
+            dataframe.append(pd.Series(value))
+        dataframe = pd.DataFrame(dataframe)
+        a = dataframe["收盘价"].rolling(window=10).mean()
+        print(a)
 
     def get_dividend_ratio(self):
         """
