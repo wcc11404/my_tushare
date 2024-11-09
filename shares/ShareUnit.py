@@ -8,9 +8,10 @@ import json
 import matplotlib.pyplot as plt
 import tushare as ts
 
-import date_util
+from utils import date_util
 
-class Share:
+
+class ShareUnit:
     def __init__(self, code="601398.SH"):
         self.code = code
         self.save_file_name = "code_data/{}.pkl".format(self.code.replace(".", "_"))
