@@ -1,4 +1,4 @@
-from shares.ShareUnit import ShareUnit
+from infoUnit.ShareUnit import ShareUnit
 
 gongHang = ShareUnit("601398.SH")
 nongHang = ShareUnit("601288.SH")
