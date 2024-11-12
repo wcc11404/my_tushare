@@ -5,15 +5,31 @@ import requests
 import pickle
 import datetime
 import json
+import pandas as pd
 import matplotlib.pyplot as plt
 import tushare as ts
 
-import date_util
+import utils.date_util as date_util
+import utils.file_util as file_util
 
-class Share:
+START_DATE = "20100101"
+
+"""
+股票unit
+
+包含股票的具体信息， 负责更新、计算、存储股票所有数值信息
+market_condition： 存储历史行情数据，具体包括每天的 开盘价、收盘价、最高价、最低价、成交量、成交额等
+dividend： 存储历史分红信息
+
+"""
+class ShareUnit:
     def __init__(self, code="601398.SH"):
         self.code = code
-        self.save_file_name = "code_data/{}.pkl".format(self.code.replace(".", "_"))
+        self.save_file_name = os.path.join(
+            file_util.project_dir,
+            file_util.code_data_dir,
+            self.code.replace(".", "_") + ".pkl"
+        )
 
         self.my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
         # ts.set_token(self.my_token)
@@ -25,7 +41,6 @@ class Share:
     def init_information(self):
         self.market_condition = {}
         self.dividend = {}
-        # self.qfq_market_condition = {}
 
         self.load()
         self.download_and_update_dividend()
@@ -42,6 +57,15 @@ class Share:
                 self.market_condition = code_data["行情"]
                 self.dividend = code_data["分红"]
 
+    def save(self):
+        code_data = {
+            "行情": self.market_condition,
+            "分红": self.dividend,
+        }
+        # 写入文件
+        with open(self.save_file_name, 'wb') as file:
+            pickle.dump(code_data, file)
+
     def download_and_update_fenhong(self):
         # https://tsanghi.com/fin/doc
         yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
@@ -55,18 +79,14 @@ class Share:
         data = json.loads(response.text)
         print(data)
 
-    def count_qfq_market_condition(self, start_date="20100101", end_date=None):
-        if end_date is None:
-            yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-            end_date = yesterday.strftime("%Y%m%d")
-
+    def count_qfq_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         qfq_market_condition = {}
         for date, value in self.market_condition.items():
             if date < start_date or date > end_date:
                 continue
-            qfq_market_condition[date]
+            # qfq_market_condition[date]
 
-    def download_and_update_dividend(self, start_date="20100101"):
+    def download_and_update_dividend(self, start_date=START_DATE):
         if self.code == "601398.SH":
             temp = [
                 [20070620, 20070628, 0.165, 0],
@@ -103,12 +123,12 @@ class Share:
         for item in arr:
             self.dividend[item[0]] = item[1]
 
-    def download_and_update_market_condition(self, start_date="20100101"):
+    def download_and_update_market_condition(self, start_date=START_DATE):
         # 按时间获取数据
         for date in tqdm.tqdm(
                 date_util.generate_date_list(
-                    start_date,
-                    date_util.yesterday_date,
+                    start_date=start_date,
+                    end_date=date_util.today_date,
                     wo_weekend=True,
                     illegal_date_list=self.market_condition.keys()
                 )
@@ -145,31 +165,31 @@ class Share:
         for item in arr:
             self.market_condition[item[0]] = item[1]
 
-    def save(self):
-        code_data = {
-            "行情": self.market_condition,
-            "分红": self.dividend,
-        }
-        # 写入文件
-        with open(self.save_file_name, 'wb') as file:
-            pickle.dump(code_data, file)
-
-    def show(self):
-        print(len(self.market_condition))
-        for date, value in self.market_condition.items():
-            print(date)
-            print(value)
-
-    def show_market_condition(self, start_date="20200101", end_date=date_util.yesterday_date):
+    def show_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         x, y = [], []
         for date, value in self.market_condition.items():
-            if date < start_date or date > end_date:
+            if date < start_date or date >= end_date:
                 continue
             if len(value) == 0:
                 continue
             x.append(date)
             y.append(value["开盘价"])
         plt.plot(x, y)
+        plt.show()
+
+    def show_mean(self, start_date=START_DATE, end_date=date_util.today_date):
+        dataframe = []
+        for date, value in self.market_condition.items():
+            if date < start_date or date >= end_date:
+                continue
+            if len(value) == 0:
+                continue
+            value["日期"] = date
+            dataframe.append(pd.Series(value))
+        dataframe = pd.DataFrame(dataframe)
+        dataframe.set_index("日期", inplace=True)
+        dataframe["均值"] = dataframe["收盘价"].rolling(window=120).mean()
+        dataframe[["收盘价", "均值"]].plot(figsize=(10,6))
         plt.show()
 
     def get_dividend_ratio(self):
