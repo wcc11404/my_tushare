@@ -1,13 +1,19 @@
+import infoUnit.share_init as share_init
 
 """
 量化策略基类
 """
 class QuantStrategy:
     def __init__(self):
+        # 策略属性
         self.strategy_name = "QuantStrategy"
         self.account_amount = 100, 000
 
+        # 资产组合
         self.account_portfolio = {}
+
+        # 历史数据信息
+        self.valid_share_dict = share_init.get_valid_share()
 
     def get_account_info(self):
         """
