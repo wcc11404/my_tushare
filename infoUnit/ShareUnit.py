@@ -9,7 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tushare as ts
 
-from utils import date_util
+import utils.date_util as date_util
+import utils.file_util as file_util
 
 START_DATE = "20100101"
 
@@ -24,7 +25,11 @@ dividend： 存储历史分红信息
 class ShareUnit:
     def __init__(self, code="601398.SH"):
         self.code = code
-        self.save_file_name = "code_data/{}.pkl".format(self.code.replace(".", "_"))
+        self.save_file_name = os.path.join(
+            file_util.project_dir,
+            file_util.code_data_dir,
+            self.code.replace(".", "_") + ".pkl"
+        )
 
         self.my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
         # ts.set_token(self.my_token)
@@ -74,11 +79,7 @@ class ShareUnit:
         data = json.loads(response.text)
         print(data)
 
-    def count_qfq_market_condition(self, start_date=START_DATE, end_date=None):
-        if end_date is None:
-            yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-            end_date = yesterday.strftime("%Y%m%d")
-
+    def count_qfq_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         qfq_market_condition = {}
         for date, value in self.market_condition.items():
             if date < start_date or date > end_date:
@@ -126,8 +127,8 @@ class ShareUnit:
         # 按时间获取数据
         for date in tqdm.tqdm(
                 date_util.generate_date_list(
-                    start_date,
-                    date_util.yesterday_date,
+                    start_date=start_date,
+                    end_date=date_util.today_date,
                     wo_weekend=True,
                     illegal_date_list=self.market_condition.keys()
                 )
@@ -164,10 +165,10 @@ class ShareUnit:
         for item in arr:
             self.market_condition[item[0]] = item[1]
 
-    def show_market_condition(self, start_date=START_DATE, end_date=date_util.yesterday_date):
+    def show_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         x, y = [], []
         for date, value in self.market_condition.items():
-            if date < start_date or date > end_date:
+            if date < start_date or date >= end_date:
                 continue
             if len(value) == 0:
                 continue
@@ -176,10 +177,10 @@ class ShareUnit:
         plt.plot(x, y)
         plt.show()
 
-    def show_mean(self, start_date=START_DATE, end_date=date_util.yesterday_date):
+    def show_mean(self, start_date=START_DATE, end_date=date_util.today_date):
         dataframe = []
         for date, value in self.market_condition.items():
-            if date < start_date or date > end_date:
+            if date < start_date or date >= end_date:
                 continue
             if len(value) == 0:
                 continue
@@ -187,7 +188,7 @@ class ShareUnit:
             dataframe.append(pd.Series(value))
         dataframe = pd.DataFrame(dataframe)
         dataframe.set_index("日期", inplace=True)
-        dataframe["均值"] = dataframe["收盘价"].rolling(window=30).mean()
+        dataframe["均值"] = dataframe["收盘价"].rolling(window=120).mean()
         dataframe[["收盘价", "均值"]].plot(figsize=(10,6))
         plt.show()
 
