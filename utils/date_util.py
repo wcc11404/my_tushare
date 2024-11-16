@@ -26,6 +26,11 @@ def generate_date_list(start_date, end_date, wo_weekend=True, illegal_date_list=
         start_date += datetime.timedelta(days=1)
     return date_list
 
+def get_next_date(date):
+    temp = datetime.datetime.strptime(date, "%Y%m%d")
+    temp += datetime.timedelta(days=1)
+    return temp.strftime("%Y%m%d")
+
 def update_open_market_date_list():
     open_market_list = []
     with open(os.path.join(file_util.project_dir, file_util.code_data_dir, "601288_SH.pkl"), 'rb') as file:

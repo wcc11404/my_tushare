@@ -66,26 +66,7 @@ class ShareUnit:
         with open(self.save_file_name, 'wb') as file:
             pickle.dump(code_data, file)
 
-    def download_and_update_fenhong(self):
-        # https://tsanghi.com/fin/doc
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-        yesterday_date = yesterday.strftime("%Y-%m-%d")
-        start_date="2020-01-01"
-        exchange_code = "XSHG"
-        tsanghi_token = "266b5784e0a348ae99730fb2e2e2eb5c"
-        ts_code = "601398"
-        url = f"https://tsanghi.com/api/fin/stock/{exchange_code}/dividend?token={tsanghi_token}&ticker={ts_code}&start_date={start_date}&end_date={yesterday_date}"
-        response = requests.get(url)
-        data = json.loads(response.text)
-        print(data)
-
-    def count_qfq_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
-        qfq_market_condition = {}
-        for date, value in self.market_condition.items():
-            if date < start_date or date > end_date:
-                continue
-            # qfq_market_condition[date]
-
+    # 下载并更新分红信息
     def download_and_update_dividend(self, start_date=START_DATE):
         if self.code == "601398.SH":
             temp = [
@@ -123,6 +104,7 @@ class ShareUnit:
         for item in arr:
             self.dividend[item[0]] = item[1]
 
+    # 下载并更新历史行情信息
     def download_and_update_market_condition(self, start_date=START_DATE):
         # 按时间获取数据
         for date in tqdm.tqdm(
@@ -165,6 +147,7 @@ class ShareUnit:
         for item in arr:
             self.market_condition[item[0]] = item[1]
 
+    # 展示历史行情信息
     def show_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         x, y = [], []
         for date, value in self.market_condition.items():
@@ -177,6 +160,7 @@ class ShareUnit:
         plt.plot(x, y)
         plt.show()
 
+    # 展示n日均值行情
     def show_mean(self, start_date=START_DATE, end_date=date_util.today_date):
         dataframe = []
         for date, value in self.market_condition.items():
@@ -192,6 +176,7 @@ class ShareUnit:
         dataframe[["收盘价", "均值"]].plot(figsize=(10,6))
         plt.show()
 
+    # 获取全部分红率
     def get_dividend_ratio(self):
         """
         计算历年平均分红率
@@ -203,6 +188,7 @@ class ShareUnit:
                 dividend_ratio_dict[date] = value["分红"] / self.market_condition[date]["收盘价"]
         return dividend_ratio_dict
 
+    # 获取平均分红率
     def get_average_dividend_ratio(self, count_year=-1):
         """
         计算指定年份的平均分红率
@@ -224,3 +210,30 @@ class ShareUnit:
             if flag == True:
                 count_num += 1
         return sum_ratio / count_num if count_num > 0 else 0, count_num
+
+    # 获取时间段内的行情信息
+    def get_market_condition(self, start_date=START_DATE, end_date=None):
+        if end_date is None:
+            end_date = date_util.get_next_date(start_date)
+
+            market_condition = []
+        for date in date_util.generate_date_list(start_date, end_date):
+            if date in self.market_condition and len(self.market_condition[date]) != 0:
+                market_condition.append(self.market_condition[date])
+
+        return market_condition
+
+"""
+    def download_and_update_fenhong(self):
+        # https://tsanghi.com/fin/doc
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        yesterday_date = yesterday.strftime("%Y-%m-%d")
+        start_date="2020-01-01"
+        exchange_code = "XSHG"
+        tsanghi_token = "266b5784e0a348ae99730fb2e2e2eb5c"
+        ts_code = "601398"
+        url = f"https://tsanghi.com/api/fin/stock/{exchange_code}/dividend?token={tsanghi_token}&ticker={ts_code}&start_date={start_date}&end_date={yesterday_date}"
+        response = requests.get(url)
+        data = json.loads(response.text)
+        print(data)
+"""
