@@ -1,10 +1,8 @@
 import os
 import time
 import tqdm
-import requests
 import pickle
 import datetime
-import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import tushare as ts
@@ -12,7 +10,13 @@ import tushare as ts
 import utils.date_util as date_util
 import utils.file_util as file_util
 
+from infoUnit.MarketCondition import marketcondition
+
 START_DATE = "20100101"
+# https://tushare.pro/document/2?doc_id=27
+tushare_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
+# ts.set_token(self.my_token)
+tushare_api = ts.pro_api(tushare_token)
 
 """
 股票unit
@@ -31,10 +35,6 @@ class ShareUnit:
             self.code.replace(".", "_") + ".pkl"
         )
 
-        self.my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
-        # ts.set_token(self.my_token)
-        self.pro = ts.pro_api(self.my_token)
-
         # 初始化 行情数据
         self.init_information()
 
@@ -47,6 +47,7 @@ class ShareUnit:
         self.download_and_update_market_condition()
         self.save()
 
+    # 加载本地股票缓存
     def load(self):
         # 加载之前下载过的数据
         if not os.path.exists(self.save_file_name):
@@ -57,6 +58,7 @@ class ShareUnit:
                 self.market_condition = code_data["行情"]
                 self.dividend = code_data["分红"]
 
+    # 存储本地股票缓存
     def save(self):
         code_data = {
             "行情": self.market_condition,
@@ -105,21 +107,19 @@ class ShareUnit:
             self.dividend[item[0]] = item[1]
 
     # 下载并更新历史行情信息
-    def download_and_update_market_condition(self, start_date=START_DATE):
+    def download_and_update_market_condition(self, start_date=START_DATE, log_detail=False):
         # 按时间获取数据
-        for date in tqdm.tqdm(
-                date_util.generate_date_list(
-                    start_date=start_date,
-                    end_date=date_util.today_date,
-                    wo_weekend=True,
-                    illegal_date_list=self.market_condition.keys()
-                )
-        ):
+        data_list = date_util.generate_date_list(
+            start_date=start_date,
+            end_date=date_util.today_date,
+            wo_weekend=True,
+            illegal_date_list=self.market_condition.keys()
+        )
+        for date in tqdm.tqdm(data_list) if log_detail is True else data_list:
             if date in self.market_condition:
                 continue
 
-            # https://tushare.pro/document/2?doc_id=27
-            df = self.pro.daily(ts_code=self.code, start_date=date, end_date=date)
+            df = tushare_api.daily(ts_code=self.code, start_date=date, end_date=date)
             if df.empty == True:
                 # 获取失败 大概率是不开市
                 self.market_condition[date] = {}
@@ -216,13 +216,22 @@ class ShareUnit:
         if end_date is None:
             end_date = date_util.get_next_date(start_date)
 
-            market_condition = []
+        sub_market_condition = {}
         for date in date_util.generate_date_list(start_date, end_date):
             if date in self.market_condition and len(self.market_condition[date]) != 0:
-                market_condition.append(self.market_condition[date])
+                sub_market_condition[date] = self.market_condition[date]
+        return sub_market_condition
 
-        return market_condition
+    # 获取时间段内的分红信息
+    def get_dividend(self, start_date=START_DATE, end_date=None):
+        if end_date is None:
+            end_date = date_util.get_next_date(start_date)
 
+        sub_dividend = {}
+        for date in date_util.generate_date_list(start_date, end_date):
+            if date in self.dividend and len(self.dividend[date]) != 0:
+                sub_dividend[date] = self.dividend[date]
+        return sub_dividend
 """
     def download_and_update_fenhong(self):
         # https://tsanghi.com/fin/doc
