@@ -1,10 +1,8 @@
 import os
 import time
 import tqdm
-import requests
 import pickle
 import datetime
-import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import tushare as ts
@@ -12,7 +10,13 @@ import tushare as ts
 import utils.date_util as date_util
 import utils.file_util as file_util
 
+from infoUnit.MarketCondition import marketcondition
+
 START_DATE = "20100101"
+# https://tushare.pro/document/2?doc_id=27
+tushare_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
+# ts.set_token(self.my_token)
+tushare_api = ts.pro_api(tushare_token)
 
 """
 股票unit
@@ -31,10 +35,6 @@ class ShareUnit:
             self.code.replace(".", "_") + ".pkl"
         )
 
-        self.my_token = "83a0e2644bf378843fb9c365bd504cbf445854193cd07271be4f8058"
-        # ts.set_token(self.my_token)
-        self.pro = ts.pro_api(self.my_token)
-
         # 初始化 行情数据
         self.init_information()
 
@@ -47,6 +47,7 @@ class ShareUnit:
         self.download_and_update_market_condition()
         self.save()
 
+    # 加载本地股票缓存
     def load(self):
         # 加载之前下载过的数据
         if not os.path.exists(self.save_file_name):
@@ -57,6 +58,7 @@ class ShareUnit:
                 self.market_condition = code_data["行情"]
                 self.dividend = code_data["分红"]
 
+    # 存储本地股票缓存
     def save(self):
         code_data = {
             "行情": self.market_condition,
@@ -66,26 +68,7 @@ class ShareUnit:
         with open(self.save_file_name, 'wb') as file:
             pickle.dump(code_data, file)
 
-    def download_and_update_fenhong(self):
-        # https://tsanghi.com/fin/doc
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-        yesterday_date = yesterday.strftime("%Y-%m-%d")
-        start_date="2020-01-01"
-        exchange_code = "XSHG"
-        tsanghi_token = "266b5784e0a348ae99730fb2e2e2eb5c"
-        ts_code = "601398"
-        url = f"https://tsanghi.com/api/fin/stock/{exchange_code}/dividend?token={tsanghi_token}&ticker={ts_code}&start_date={start_date}&end_date={yesterday_date}"
-        response = requests.get(url)
-        data = json.loads(response.text)
-        print(data)
-
-    def count_qfq_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
-        qfq_market_condition = {}
-        for date, value in self.market_condition.items():
-            if date < start_date or date > end_date:
-                continue
-            # qfq_market_condition[date]
-
+    # 下载并更新分红信息
     def download_and_update_dividend(self, start_date=START_DATE):
         if self.code == "601398.SH":
             temp = [
@@ -123,21 +106,20 @@ class ShareUnit:
         for item in arr:
             self.dividend[item[0]] = item[1]
 
-    def download_and_update_market_condition(self, start_date=START_DATE):
+    # 下载并更新历史行情信息
+    def download_and_update_market_condition(self, start_date=START_DATE, log_detail=False):
         # 按时间获取数据
-        for date in tqdm.tqdm(
-                date_util.generate_date_list(
-                    start_date=start_date,
-                    end_date=date_util.today_date,
-                    wo_weekend=True,
-                    illegal_date_list=self.market_condition.keys()
-                )
-        ):
+        data_list = date_util.generate_date_list(
+            start_date=start_date,
+            end_date=date_util.today_date,
+            wo_weekend=True,
+            illegal_date_list=self.market_condition.keys()
+        )
+        for date in tqdm.tqdm(data_list) if log_detail is True else data_list:
             if date in self.market_condition:
                 continue
 
-            # https://tushare.pro/document/2?doc_id=27
-            df = self.pro.daily(ts_code=self.code, start_date=date, end_date=date)
+            df = tushare_api.daily(ts_code=self.code, start_date=date, end_date=date)
             if df.empty == True:
                 # 获取失败 大概率是不开市
                 self.market_condition[date] = {}
@@ -165,6 +147,7 @@ class ShareUnit:
         for item in arr:
             self.market_condition[item[0]] = item[1]
 
+    # 展示历史行情信息
     def show_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
         x, y = [], []
         for date, value in self.market_condition.items():
@@ -177,6 +160,7 @@ class ShareUnit:
         plt.plot(x, y)
         plt.show()
 
+    # 展示n日均值行情
     def show_mean(self, start_date=START_DATE, end_date=date_util.today_date):
         dataframe = []
         for date, value in self.market_condition.items():
@@ -192,6 +176,7 @@ class ShareUnit:
         dataframe[["收盘价", "均值"]].plot(figsize=(10,6))
         plt.show()
 
+    # 获取全部分红率
     def get_dividend_ratio(self):
         """
         计算历年平均分红率
@@ -203,6 +188,7 @@ class ShareUnit:
                 dividend_ratio_dict[date] = value["分红"] / self.market_condition[date]["收盘价"]
         return dividend_ratio_dict
 
+    # 获取平均分红率
     def get_average_dividend_ratio(self, count_year=-1):
         """
         计算指定年份的平均分红率
@@ -224,3 +210,39 @@ class ShareUnit:
             if flag == True:
                 count_num += 1
         return sum_ratio / count_num if count_num > 0 else 0, count_num
+
+    # 获取时间段内的行情信息
+    def get_market_condition(self, start_date=START_DATE, end_date=None):
+        if end_date is None:
+            end_date = date_util.get_next_date(start_date)
+
+        sub_market_condition = {}
+        for date in date_util.generate_date_list(start_date, end_date):
+            if date in self.market_condition and len(self.market_condition[date]) != 0:
+                sub_market_condition[date] = self.market_condition[date]
+        return sub_market_condition
+
+    # 获取时间段内的分红信息
+    def get_dividend(self, start_date=START_DATE, end_date=None):
+        if end_date is None:
+            end_date = date_util.get_next_date(start_date)
+
+        sub_dividend = {}
+        for date in date_util.generate_date_list(start_date, end_date):
+            if date in self.dividend and len(self.dividend[date]) != 0:
+                sub_dividend[date] = self.dividend[date]
+        return sub_dividend
+"""
+    def download_and_update_fenhong(self):
+        # https://tsanghi.com/fin/doc
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        yesterday_date = yesterday.strftime("%Y-%m-%d")
+        start_date="2020-01-01"
+        exchange_code = "XSHG"
+        tsanghi_token = "266b5784e0a348ae99730fb2e2e2eb5c"
+        ts_code = "601398"
+        url = f"https://tsanghi.com/api/fin/stock/{exchange_code}/dividend?token={tsanghi_token}&ticker={ts_code}&start_date={start_date}&end_date={yesterday_date}"
+        response = requests.get(url)
+        data = json.loads(response.text)
+        print(data)
+"""
