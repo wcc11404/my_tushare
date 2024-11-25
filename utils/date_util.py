@@ -84,7 +84,7 @@ def update_open_market_date_list():
     with open(os.path.join(file_util.project_dir, file_util.code_data_dir, "601288_SH.pkl"), 'rb') as file:
         code_data = pickle.load(file)
         for date, value in code_data["行情"].items():
-            if len(value) == 0:
+            if value.open == -1:
                 continue
             open_market_list.append(date)
     with open(os.path.join(file_util.project_dir, file_util.code_data_dir, "open_market_date.pkl"), 'wb') as file:

@@ -26,11 +26,11 @@ def generate_fake_market_information(share_dict, date, time_interval=600):
         market_condition = market_condition[date]
 
         # 生成伪实时信息
-        price_list = [round(random.uniform(market_condition["最低价"], market_condition["最高价"]),2) for _ in range(count)]
-        price_list[random.randint(1, count - 2)] = market_condition["最低价"]
-        price_list[random.randint(1, count - 2)] = market_condition["最高价"]
-        price_list[0] = market_condition["开盘价"]
-        price_list[-1] = market_condition["收盘价"]
+        price_list = [round(random.uniform(market_condition.low, market_condition.high), 2) for _ in range(count)]
+        price_list[random.randint(1, count - 2)] = market_condition.low
+        price_list[random.randint(1, count - 2)] = market_condition.high
+        price_list[0] = market_condition.open
+        price_list[-1] = market_condition.close
 
         # 转换成dict形式
         dict_list[share_code] = [{
