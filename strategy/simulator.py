@@ -102,7 +102,7 @@ def simulator_main(start_date="20150101", end_date="20240101"):
                 continue
             market_condition = market_condition[last_date]
 
-            share_value += market_condition["收盘价"] * quant_strategy.account_portfolio[share_code]["持有数量"]
+            share_value += market_condition.close * quant_strategy.account_portfolio[share_code]["持有数量"]
 
     # 展示量化收益
     print(

@@ -10,7 +10,8 @@ import tushare as ts
 import utils.date_util as date_util
 import utils.file_util as file_util
 
-from infoUnit.MarketCondition import marketcondition
+from infoUnit.McUnit import McUnit, default_mc_unit
+from infoUnit.DividendUnit import DividendUnit
 
 START_DATE = "20100101"
 # https://tushare.pro/document/2?doc_id=27
@@ -93,18 +94,13 @@ class ShareUnit:
                 [0, 20240716, 3.064, 0],
             ]
             for item in temp:
-                self.dividend[str(item[1])] = {
-                    "分红": item[2] / 10,
-                    "配股": item[3],
-                }
+                self.dividend[str(item[1])] = DividendUnit(
+                    item[2] / 10, item[3]
+                )
 
-        arr = []
-        for k, v in self.dividend.items():
-            arr.append([k, v])
+        arr = [[k, v] for k, v in self.dividend.items()]
         arr = sorted(arr, key=lambda x: x[0])
-        self.dividend = {}
-        for item in arr:
-            self.dividend[item[0]] = item[1]
+        self.dividend = {item[0]: item[1] for item in arr}
 
     # 下载并更新历史行情信息
     def download_and_update_market_condition(self, start_date=START_DATE, log_detail=False):
@@ -122,30 +118,19 @@ class ShareUnit:
             df = tushare_api.daily(ts_code=self.code, start_date=date, end_date=date)
             if df.empty == True:
                 # 获取失败 大概率是不开市
-                self.market_condition[date] = {}
+                self.market_condition[date] = default_mc_unit
             else:
-                temp_dict = df.loc[0].to_dict()
-                self.market_condition[date] = {
-                    "开盘价": temp_dict["open"],
-                    "最高价": temp_dict["high"],
-                    "最低价": temp_dict["low"],
-                    "收盘价": temp_dict["close"],
-                    "昨收价": temp_dict["pre_close"],
-                    "涨跌额": temp_dict["change"],
-                    "涨跌幅": temp_dict["pct_chg"],
-                    "成交量": temp_dict["vol"],
-                    "成交额": temp_dict["amount"],
-                }
+                d = df.loc[0].to_dict()
+                self.market_condition[date] = McUnit(
+                    d["open"], d["close"], d["high"], d["low"],
+                    d["pre_close"], d["change"], d["pct_chg"], d["vol"], d["amount"]
+                )
             time.sleep(0.5)
 
         # 按时间排序
-        arr = []
-        for k, v in self.market_condition.items():
-            arr.append([k, v])
+        arr = [[k, v] for k, v in self.market_condition.items()]
         arr = sorted(arr, key=lambda x: x[0])
-        self.market_condition = {}
-        for item in arr:
-            self.market_condition[item[0]] = item[1]
+        self.market_condition = {item[0]: item[1] for item in arr}
 
     # 展示历史行情信息
     def show_market_condition(self, start_date=START_DATE, end_date=date_util.today_date):
@@ -153,10 +138,10 @@ class ShareUnit:
         for date, value in self.market_condition.items():
             if date < start_date or date >= end_date:
                 continue
-            if len(value) == 0:
+            if value.open == -1:
                 continue
             x.append(date)
-            y.append(value["开盘价"])
+            y.append(value.open)
         plt.plot(x, y)
         plt.show()
 
@@ -166,8 +151,9 @@ class ShareUnit:
         for date, value in self.market_condition.items():
             if date < start_date or date >= end_date:
                 continue
-            if len(value) == 0:
+            if value.open == -1:
                 continue
+            value = value.to_dict()
             value["日期"] = date
             dataframe.append(pd.Series(value))
         dataframe = pd.DataFrame(dataframe)
@@ -185,7 +171,7 @@ class ShareUnit:
         dividend_ratio_dict = {}
         for date, value in self.dividend.items():
             if date in self.market_condition:
-                dividend_ratio_dict[date] = value["分红"] / self.market_condition[date]["收盘价"]
+                dividend_ratio_dict[date] = value.cash / self.market_condition[date].close
         return dividend_ratio_dict
 
     # 获取平均分红率
@@ -218,7 +204,7 @@ class ShareUnit:
 
         sub_market_condition = {}
         for date in date_util.generate_date_list(start_date, end_date):
-            if date in self.market_condition and len(self.market_condition[date]) != 0:
+            if date in self.market_condition and self.market_condition[date].open != -1:
                 sub_market_condition[date] = self.market_condition[date]
         return sub_market_condition
 
@@ -229,7 +215,7 @@ class ShareUnit:
 
         sub_dividend = {}
         for date in date_util.generate_date_list(start_date, end_date):
-            if date in self.dividend and len(self.dividend[date]) != 0:
+            if date in self.dividend:
                 sub_dividend[date] = self.dividend[date]
         return sub_dividend
 """
@@ -246,3 +232,12 @@ class ShareUnit:
         data = json.loads(response.text)
         print(data)
 """
+
+if __name__ == "__main":
+    gongHang = ShareUnit("601398.SH")
+    gongHang.show_market_condition()
+    gongHang.show_mean()
+    gongHang.get_dividend_ratio()
+    gongHang.get_average_dividend_ratio()
+    gongHang.get_market_condition()
+    gongHang.get_dividend()
