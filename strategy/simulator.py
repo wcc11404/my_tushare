@@ -26,11 +26,11 @@ def generate_fake_market_information(share_dict, date, time_interval=600):
         market_condition = market_condition[date]
 
         # 生成伪实时信息
-        price_list = [round(random.uniform(market_condition["最低价"], market_condition["最高价"]),2) for _ in range(count)]
-        price_list[random.randint(1, count - 2)] = market_condition["最低价"]
-        price_list[random.randint(1, count - 2)] = market_condition["最高价"]
-        price_list[0] = market_condition["开盘价"]
-        price_list[-1] = market_condition["收盘价"]
+        price_list = [round(random.uniform(market_condition.low, market_condition.high),2) for _ in range(count)]
+        price_list[random.randint(1, count - 2)] = market_condition.low
+        price_list[random.randint(1, count - 2)] = market_condition.high
+        price_list[0] = market_condition.open
+        price_list[-1] = market_condition.close
 
         # 转换成dict形式
         dict_list[share_code] = [{
@@ -63,8 +63,6 @@ def simulator_main(start_date="20150101", end_date="20240101"):
     quant_strategy_init_money = quant_strategy.account_amount
 
 
-
-
     """     模拟盘每日逻辑    """
     for date in date_util.generate_open_market_date_list(start_date, end_date):
 
@@ -88,7 +86,6 @@ def simulator_main(start_date="20150101", end_date="20240101"):
 
         """     闭市结算    """
         # 闭市获取账户信息
-
 
 
     """     模拟盘结算    """

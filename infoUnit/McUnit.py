@@ -2,6 +2,7 @@ import json
 
 """
 Market Condition
+市场行情
 """
 class McUnit:
     def __init__(self, open, close, high, low, pre_close, change, pct_change, vol, amount):

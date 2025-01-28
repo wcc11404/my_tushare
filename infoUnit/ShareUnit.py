@@ -92,6 +92,7 @@ class ShareUnit:
                 [0, 20220712, 2.933, 0],
                 [0, 20230717, 3.035, 0],
                 [0, 20240716, 3.064, 0],
+                [0, 20250107, 1.434, 0],
             ]
             for item in temp:
                 self.dividend[str(item[1])] = DividendUnit(
@@ -103,7 +104,7 @@ class ShareUnit:
         self.dividend = {item[0]: item[1] for item in arr}
 
     # 下载并更新历史行情信息
-    def download_and_update_market_condition(self, start_date=START_DATE, log_detail=False):
+    def download_and_update_market_condition(self, start_date=START_DATE, log_detail=True):
         # 按时间获取数据
         data_list = date_util.generate_date_list(
             start_date=start_date,
@@ -142,6 +143,7 @@ class ShareUnit:
                 continue
             x.append(date)
             y.append(value.open)
+            print(date, value.open)
         plt.plot(x, y)
         plt.show()
 
@@ -204,7 +206,8 @@ class ShareUnit:
 
         sub_market_condition = {}
         for date in date_util.generate_date_list(start_date, end_date):
-            if date in self.market_condition and self.market_condition[date].open != -1:
+            # 取值等于default_mc_unit的大概率是不开盘
+            if date in self.market_condition and self.market_condition[date].open != default_mc_unit.open:
                 sub_market_condition[date] = self.market_condition[date]
         return sub_market_condition
 

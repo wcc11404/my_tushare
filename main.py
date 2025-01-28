@@ -1,7 +1,7 @@
 from infoUnit.ShareUnit import ShareUnit
 
 gongHang = ShareUnit("601398.SH")
-# gongHang.show_market_condition()
+gongHang.show_market_condition(start_date="20241201")
 gongHang.show_mean()
 gongHang.get_dividend_ratio()
 gongHang.get_average_dividend_ratio()
